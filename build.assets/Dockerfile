@@ -34,6 +34,7 @@ RUN apt-get update -y --fix-missing && \
         make \
         mingw-w64 \
         net-tools \
+        parallel \
         shellcheck \
         tar \
         tree \

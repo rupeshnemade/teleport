@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 
 	"github.com/gravitational/teleport/api/client/proto"
 	"github.com/gravitational/teleport/lib/auth"
@@ -30,6 +31,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
+
+	gcpcredentials "cloud.google.com/go/iam/credentials/apiv1"
+	credentialspb "google.golang.org/genproto/googleapis/iam/credentials/v1"
+
 	"github.com/gravitational/trace"
 	"github.com/jonboulle/clockwork"
 	"github.com/sirupsen/logrus"
@@ -91,6 +96,27 @@ func (a *Auth) GetRDSAuthToken(sessionCtx *Session) (string, error) {
 		sessionCtx.Server.GetRegion(),
 		sessionCtx.DatabaseUser,
 		a.cfg.Credentials)
+}
+
+//
+func (a *Auth) GetGCPAuthToken(ctx context.Context, sessionCtx *Session) (string, error) {
+	a.cfg.Log.Debugf("Generating GCP auth token for %s.", sessionCtx)
+	client, err := gcpcredentials.NewIamCredentialsClient(ctx)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+	defer client.Close()
+	resp, err := client.GenerateAccessToken(ctx,
+		&credentialspb.GenerateAccessTokenRequest{
+			Name: fmt.Sprintf("projects/-/serviceAccounts/%v", sessionCtx.DatabaseUser),
+			Scope: []string{
+				"https://www.googleapis.com/auth/cloud-platform",
+			},
+		})
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+	return resp.AccessToken, nil
 }
 
 // GetTLSConfig builds the client TLS configuration for the session.

@@ -555,11 +555,18 @@ type Database struct {
 	CACert []byte
 	// AWS contains AWS specific settings for RDS/Aurora.
 	AWS DatabaseAWS
+	//
+	GCP DatabaseGCP
 }
 
 // DatabaseAWS contains AWS specific settings for RDS/Aurora databases.
 type DatabaseAWS struct {
 	// Region is the cloud region database is running in when using AWS RDS.
+	Region string
+}
+
+//
+type DatabaseGCP struct {
 	Region string
 }
 

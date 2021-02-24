@@ -172,6 +172,8 @@ message DatabaseServerSpecV3 {
     // Rotation contains the server CA rotation information.
     Rotation Rotation = 10
         [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "rotation,omitempty" ];
+    //
+    GCP GCP = 11 [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "gcp" ];
 }
 
 // AWS contains AWS specific settings such as region.
@@ -179,6 +181,8 @@ message AWS {
     // Region is a AWS cloud region.
     string Region = 1 [ (gogoproto.jsontag) = "region,omitempty" ];
 }
+
+message GCP { string Region = 1 [ (gogoproto.jsontag) = "region,omitempty" ]; }
 
 // ServerV2 represents a Node, App, Database, Proxy or Auth server in a Teleport cluster.
 message ServerV2 {

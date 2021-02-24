@@ -339,6 +339,13 @@ func (e *Engine) getConnectConfig(ctx context.Context, sessionCtx *common.Sessio
 			return nil, trace.Wrap(err)
 		}
 	}
+	// TODO
+	if sessionCtx.Server.IsGCP() {
+		config.Password, err = e.Auth.GetGCPAuthToken(ctx, sessionCtx)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+	}
 	// TLS config will use client certificate for an onprem database or
 	// will contain RDS root certificate for RDS/Aurora.
 	config.TLSConfig, err = e.Auth.GetTLSConfig(ctx, sessionCtx)

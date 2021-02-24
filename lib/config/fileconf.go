@@ -893,12 +893,19 @@ type Database struct {
 	DynamicLabels []CommandLabel `yaml:"dynamic_labels,omitempty"`
 	// AWS contains AWS specific settings for RDS/Aurora databases.
 	AWS DatabaseAWS `yaml:"aws"`
+	//
+	GCP DatabaseGCP `yaml:"gcp"`
 }
 
 // DatabaseAWS contains AWS specific settings for RDS/Aurora databases.
 type DatabaseAWS struct {
 	// Region is a cloud region for RDS/Aurora database endpoint.
 	Region string `yaml:"region,omitempty"`
+}
+
+//
+type DatabaseGCP struct {
+	Region string `yaml:"region,omitempty`
 }
 
 // Apps represents the configuration for the collection of applications this

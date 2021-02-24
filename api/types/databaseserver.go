@@ -69,6 +69,8 @@ type DatabaseServer interface {
 	GetType() string
 	// IsRDS returns true if this is an RDS/Aurora database.
 	IsRDS() bool
+	//
+	IsGCP() bool
 	// CheckAndSetDefaults checks and set default values for any missing fields.
 	CheckAndSetDefaults() error
 	// Copy returns a copy of this database server object.
@@ -244,10 +246,18 @@ func (s *DatabaseServerV3) IsRDS() bool {
 	return s.GetType() == DatabaseTypeRDS
 }
 
+//
+func (s *DatabaseServerV3) IsGCP() bool {
+	return s.GetType() == DatabaseTypeGCP
+}
+
 // GetType returns the database type, self-hosted or AWS RDS.
 func (s *DatabaseServerV3) GetType() string {
 	if s.Spec.AWS.Region != "" {
 		return DatabaseTypeRDS
+	}
+	if s.Spec.GCP.Region != "" {
+		return DatabaseTypeGCP
 	}
 	return DatabaseTypeSelfHosted
 }
@@ -301,6 +311,8 @@ const (
 	DatabaseTypeSelfHosted = "self-hosted"
 	// DatabaseTypeRDS is AWS-hosted RDS or Aurora database.
 	DatabaseTypeRDS = "rds"
+	//
+	DatabaseTypeGCP = "gcp"
 )
 
 // SortedDatabaseServers implements sorter for database servers.

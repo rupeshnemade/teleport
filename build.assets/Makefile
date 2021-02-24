@@ -39,6 +39,9 @@ GID := 1000
 NOROOT := -u 1000:1000
 # pass external gocache path through to docker containers
 DOCKERFLAGS := $(DOCKERFLAGS) -v $(GOCACHE):/go/cache -e GOCACHE=/go/cache
+BATSFLAGS := ""
+else
+BATSFLAGS := -p
 endif
 export
 
@@ -186,7 +189,7 @@ test: buildbox
 .PHONY:test-sh
 test-sh: buildbox
 	docker run $(DOCKERFLAGS) $(BCCFLAGS) $(NOROOT) -t $(BUILDBOX) \
-		/bin/bash -c "make -C $(SRCDIR) test-sh"
+		/bin/bash -c "make -C $(SRCDIR) BATSFLAGS=$(BATSFLAGS) test-sh"
 
 .PHONY:integration
 integration: buildbox

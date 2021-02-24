@@ -3,6 +3,7 @@ module github.com/gravitational/teleport
 go 1.15
 
 require (
+	cloud.google.com/go v0.52.0
 	cloud.google.com/go/firestore v1.1.1
 	cloud.google.com/go/pubsub v1.2.0 // indirect
 	cloud.google.com/go/storage v1.5.0
@@ -23,6 +24,7 @@ require (
 	github.com/docker/docker v17.12.0-ce-rc1.0.20180721085148-1ef1cc838816+incompatible
 	github.com/docker/spdystream v0.0.0-20170912183627-bc6354cbbc29 // indirect
 	github.com/dustin/go-humanize v1.0.0
+	github.com/envoyproxy/go-control-plane v0.9.9-0.20201210154907-fd9021fe5dad // indirect
 	github.com/flynn/hid v0.0.0-20190502022136-f1b9b6cc019a // indirect
 	github.com/flynn/u2f v0.0.0-20180613185708-15554eb68e5d
 	github.com/fsouza/fake-gcs-server v1.11.6
@@ -30,10 +32,14 @@ require (
 	github.com/gizak/termui v0.0.0-20190224181052-63c2a0d70943
 	github.com/gogo/protobuf v1.3.1
 	github.com/gokyle/hotp v0.0.0-20160218004637-c180d57d286b
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/mock v1.4.4 // indirect
+	github.com/golang/protobuf v1.4.3
 	github.com/google/btree v1.0.0
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.4
 	github.com/google/gops v0.3.1
+	github.com/google/martian/v3 v3.1.0 // indirect
+	github.com/google/pprof v0.0.0-20210122040257-d980be63207e // indirect
+	github.com/google/uuid v1.1.2 // indirect
 	github.com/gravitational/configure v0.0.0-20160909185025-1db4b84fe9db
 	github.com/gravitational/form v0.0.0-20151109031454-c4048f792f70
 	github.com/gravitational/kingpin v2.1.11-0.20190130013101-742f2714c145+incompatible
@@ -83,18 +89,21 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20151204154511-3988ac14d6f6 // indirect
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200306183522-221f0cc107cb
-	go.opencensus.io v0.22.4 // indirect
+	go.opencensus.io v0.22.5 // indirect
 	go.uber.org/atomic v1.4.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
+	golang.org/x/mod v0.4.1 // indirect
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/sys v0.0.0-20200803210538-64077c9b5642
-	golang.org/x/text v0.3.3
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
+	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43
+	golang.org/x/text v0.3.5
+	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/api v0.22.0
-	google.golang.org/appengine v1.6.6 // indirect
-	google.golang.org/genproto v0.0.0-20200806141610-86f49bd18e98
+	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/genproto v0.0.0-20210223151946-22b48be4551b
 	google.golang.org/grpc v1.27.0
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
@@ -106,6 +115,7 @@ require (
 	k8s.io/apimachinery v0.20.0-alpha.1.0.20200922235617-829ed199f4e0
 	k8s.io/client-go v0.0.0-20200827131824-5d33118d4742
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
+	rsc.io/quote/v3 v3.1.0 // indirect
 )
 
 replace (

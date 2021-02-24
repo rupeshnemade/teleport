@@ -108,7 +108,7 @@ func (a *Auth) GetGCPAuthToken(ctx context.Context, sessionCtx *Session) (string
 	defer client.Close()
 	resp, err := client.GenerateAccessToken(ctx,
 		&credentialspb.GenerateAccessTokenRequest{
-			Name: fmt.Sprintf("projects/-/serviceAccounts/%v", sessionCtx.DatabaseUser),
+			Name: fmt.Sprintf("projects/-/serviceAccounts/%v.gserviceaccount.com", sessionCtx.DatabaseUser),
 			Scope: []string{
 				"https://www.googleapis.com/auth/cloud-platform",
 			},
@@ -132,6 +132,9 @@ func (a *Auth) GetTLSConfig(ctx context.Context, sessionCtx *Session) (*tls.Conf
 	tlsConfig := &tls.Config{
 		ServerName: addr.Host(),
 		RootCAs:    x509.NewCertPool(),
+	}
+	if sessionCtx.Server.IsGCP() {
+		tlsConfig.InsecureSkipVerify = true
 	}
 	// Add CA certificate to the trusted pool if it's present, e.g. when
 	// connecting to RDS/Aurora which require AWS CA.

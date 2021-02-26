@@ -29,6 +29,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/reversetunnel"
 	"github.com/gravitational/teleport/lib/services"
+	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils"
 
 	"github.com/gravitational/trace"
@@ -142,9 +143,25 @@ func (h *Handler) handleForward(w http.ResponseWriter, r *http.Request, session 
 // authenticate will check if request carries a session cookie matching a
 // session in the backend.
 func (h *Handler) authenticate(ctx context.Context, r *http.Request) (*session, error) {
-	cookieValue, err := extractCookie(r)
-	if err != nil {
-		h.log.Warnf("Failed to extract session cookie: %v.", err)
+	var sessionID string
+	var err error
+
+	if len(r.TLS.PeerCertificates) > 0 {
+		certificate := r.TLS.PeerCertificates[0]
+		identity, err := tlsca.FromSubject(certificate.Subject, certificate.NotAfter)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		sessionID = identity.RouteToApp.SessionID
+	} else {
+		sessionID, err = extractCookie(r)
+		if err != nil {
+			h.log.Warnf("Failed to extract session cookie: %v.", err)
+			return nil, trace.AccessDenied("invalid session")
+		}
+	}
+
+	if sessionID == "" {
 		return nil, trace.AccessDenied("invalid session")
 	}
 
@@ -152,7 +169,7 @@ func (h *Handler) authenticate(ctx context.Context, r *http.Request) (*session, 
 	// to logout and invalidate their application session immediately. This
 	// lookup should also be fast because it's in the local cache.
 	ws, err := h.c.AccessPoint.GetAppSession(ctx, services.GetAppSessionRequest{
-		SessionID: cookieValue,
+		SessionID: sessionID,
 	})
 	if err != nil {
 		h.log.Debugf("Failed to fetch application session: not found.")

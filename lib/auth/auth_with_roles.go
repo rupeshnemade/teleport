@@ -1281,12 +1281,17 @@ func (a *ServerWithRoles) generateUserCerts(ctx context.Context, req proto.UserC
 		dbProtocol:        req.RouteToDatabase.Protocol,
 		dbUser:            req.RouteToDatabase.Username,
 		dbName:            req.RouteToDatabase.Database,
+		appName:           req.RouteToApp.Name,
+		appSessionID:      req.RouteToApp.SessionID,
+		appPublicAddr:     req.RouteToApp.PublicAddr,
+		appClusterName:    req.RouteToApp.ClusterName,
 		checker:           checker,
 		traits:            traits,
 		activeRequests: services.RequestIDs{
 			AccessRequests: req.AccessRequests,
 		},
 	}
+	// TOOD(r0mant): Add app here.
 	switch req.Usage {
 	case proto.UserCertsRequest_Database:
 		certReq.usage = []string{teleport.UsageDatabaseOnly}
@@ -2448,8 +2453,14 @@ func (a *ServerWithRoles) CreateAppSession(ctx context.Context, req services.Cre
 }
 
 // UpsertAppSession not implemented: can only be called locally.
-func (a *ServerWithRoles) UpsertAppSession(ctx context.Context, session services.WebSession) error {
-	return trace.NotImplemented(notImplementedMessage)
+func (a *ServerWithRoles) UpsertAppSession(ctx context.Context, session types.WebSession) error {
+	if err := a.currentUserAction(session.GetUser()); err != nil {
+		return trace.Wrap(err)
+	}
+	if err := a.authServer.UpsertAppSession(ctx, session, a.context.Identity.GetIdentity(), a.context.Checker); err != nil {
+		return trace.Wrap(err)
+	}
+	return nil
 }
 
 // DeleteAppSession removes an application web session.

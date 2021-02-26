@@ -644,6 +644,21 @@ func (c *Client) CreateAppSession(ctx context.Context, req types.CreateAppSessio
 	return resp.GetSession(), nil
 }
 
+//
+func (c *Client) UpsertAppSession(ctx context.Context, sessionI types.WebSession) error {
+	session, ok := sessionI.(*types.WebSessionV2)
+	if !ok {
+		return trace.BadParameter("expected *types.WebSessionV2, got %T", sessionI)
+	}
+	_, err := c.grpc.UpsertAppSession(ctx, &proto.UpsertAppSessionRequest{
+		Session: session,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	return nil
+}
+
 // DeleteAppSession removes an application web session.
 func (c *Client) DeleteAppSession(ctx context.Context, req types.DeleteAppSessionRequest) error {
 	_, err := c.grpc.DeleteAppSession(ctx, &proto.DeleteAppSessionRequest{

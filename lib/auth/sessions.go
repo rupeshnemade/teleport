@@ -26,6 +26,7 @@ import (
 	"github.com/gravitational/teleport/lib/jwt"
 	"github.com/gravitational/teleport/lib/modules"
 	"github.com/gravitational/teleport/lib/services"
+	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils"
 
 	"github.com/gravitational/trace"
@@ -100,6 +101,18 @@ func (s *Server) CreateAppSession(ctx context.Context, req services.CreateAppSes
 	log.Debugf("Generated application web session for %v with TTL %v.", req.Username, ttl)
 
 	return session, nil
+}
+
+// UpsertAppSession saves the provided app session for the specified user.
+func (s *Server) UpsertAppSession(ctx context.Context, session types.WebSession, identity tlsca.Identity, checker services.AccessChecker) error {
+	// Don't let the app session go longer than the identity expiration.
+	ttl := checker.AdjustSessionTTL(identity.Expires.Sub(s.clock.Now()))
+	log.Debugf("Adjusted app session TTL to %v.", ttl)
+	session.SetExpiryTime(s.clock.Now().Add(ttl))
+	if err := s.Identity.UpsertAppSession(ctx, session); err != nil {
+		return trace.Wrap(err)
+	}
+	return nil
 }
 
 // generateAppToken generates an JWT token that will be passed along with every

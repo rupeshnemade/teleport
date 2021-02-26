@@ -467,6 +467,8 @@ type certRequest struct {
 	appPublicAddr string
 	// appClusterName is the name of the cluster this application is in.
 	appClusterName string
+	// appName is the name of the application to generate cert for.
+	appName string
 	// dbService identifies the name of the database service requests will
 	// be routed to.
 	dbService string
@@ -740,6 +742,7 @@ func (a *Server) generateUserCert(req certRequest) (*certs, error) {
 			SessionID:   req.appSessionID,
 			PublicAddr:  req.appPublicAddr,
 			ClusterName: req.appClusterName,
+			Name:        req.appName,
 		},
 		TeleportCluster: clusterName,
 		RouteToDatabase: tlsca.RouteToDatabase{

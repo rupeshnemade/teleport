@@ -140,6 +140,7 @@ type ReissueParams struct {
 	KubernetesCluster string
 	AccessRequests    []string
 	RouteToDatabase   proto.RouteToDatabase
+	RouteToApp        proto.RouteToApp
 }
 
 // ReissueUserCerts generates certificates for the user
@@ -186,6 +187,7 @@ func (proxy *ProxyClient) ReissueUserCerts(ctx context.Context, params ReissuePa
 		KubernetesCluster: params.KubernetesCluster,
 		AccessRequests:    params.AccessRequests,
 		RouteToDatabase:   params.RouteToDatabase,
+		RouteToApp:        params.RouteToApp,
 	}
 	if _, ok := cert.Permissions.Extensions[teleport.CertExtensionTeleportRoles]; !ok {
 		req.Format = teleport.CertificateFormatOldSSH
@@ -202,6 +204,9 @@ func (proxy *ProxyClient) ReissueUserCerts(ctx context.Context, params ReissuePa
 	}
 	if params.RouteToDatabase.ServiceName != "" {
 		key.DBTLSCerts[params.RouteToDatabase.ServiceName] = certs.TLS
+	}
+	if params.RouteToApp.Name != "" {
+		key.AppTLSCerts[params.RouteToApp.Name] = certs.TLS
 	}
 
 	// save the cert to the local storage (~/.tsh usually):
@@ -317,6 +322,19 @@ func (proxy *ProxyClient) GetAppServers(ctx context.Context, namespace string) (
 	}
 
 	return servers, nil
+}
+
+// UpsertAppSession saves the provided application access session.
+func (proxy *ProxyClient) UpsertAppSession(ctx context.Context, session types.WebSession) error {
+	authClient, err := proxy.ConnectToRootCluster(ctx, true)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	err = authClient.UpsertAppSession(ctx, session)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	return nil
 }
 
 // GetDatabaseServers returns all registered database proxy servers.

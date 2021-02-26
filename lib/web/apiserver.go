@@ -176,6 +176,10 @@ func (h *RewritingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if redir, ok := app.HasName(r, h.publicAddr); ok {
+		if len(r.TLS.PeerCertificates) > 0 {
+			h.appHandler.ServeHTTP(w, r)
+			return
+		}
 		http.Redirect(w, r, redir, http.StatusFound)
 		return
 	}

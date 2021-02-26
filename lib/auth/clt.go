@@ -2130,7 +2130,7 @@ func (c *Client) GetDatabaseServers(ctx context.Context, namespace string, opts 
 
 // UpsertAppSession not implemented: can only be called locally.
 func (c *Client) UpsertAppSession(ctx context.Context, session services.WebSession) error {
-	return trace.NotImplemented(notImplementedMessage)
+	return c.APIClient.UpsertAppSession(ctx, session)
 }
 
 // ResumeAuditStream resumes existing audit stream.

@@ -24,6 +24,16 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/gravitational/trace"
+	"github.com/gravitational/trace/trail"
+	"github.com/jonboulle/clockwork"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
+
 	"github.com/gravitational/teleport"
 	"github.com/gravitational/teleport/api/client"
 	"github.com/gravitational/teleport/api/client/proto"
@@ -36,15 +46,6 @@ import (
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/session"
 	"github.com/gravitational/teleport/lib/utils"
-	"github.com/gravitational/trace"
-	"github.com/gravitational/trace/trail"
-	"github.com/jonboulle/clockwork"
-	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/peer"
-	"google.golang.org/grpc/status"
 
 	// Register gzip compressor for gRPC.
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -1343,7 +1344,7 @@ func addMFADeviceAuthChallenge(gctx *grpcContext, stream proto.AuthService_AddMF
 	}
 	// Only validate if there was a challenge.
 	if authChallenge.TOTP != nil || len(authChallenge.U2F) > 0 {
-		if err := auth.validateMFAAuthResponse(ctx, user, authResp, u2fStorage); err != nil {
+		if _, err := auth.validateMFAAuthResponse(ctx, user, authResp, u2fStorage); err != nil {
 			return trace.Wrap(err)
 		}
 	}
@@ -1542,7 +1543,7 @@ func deleteMFADeviceAuthChallenge(gctx *grpcContext, stream proto.AuthService_De
 	if authResp == nil {
 		return trace.BadParameter("expected MFAAuthenticateResponse, got %T", req)
 	}
-	if err := auth.validateMFAAuthResponse(ctx, user, authResp, u2fStorage); err != nil {
+	if _, err := auth.validateMFAAuthResponse(ctx, user, authResp, u2fStorage); err != nil {
 		return trace.Wrap(err)
 	}
 	return nil
@@ -1593,12 +1594,13 @@ func (g *GRPCServer) GenerateUserSingleUseCerts(stream proto.AuthService_Generat
 
 	// 2. send MFAChallenge
 	// 3. receive and validate MFAResponse
-	if err := userSingleUseCertsAuthChallenge(actx, stream); err != nil {
+	mfaDev, err := userSingleUseCertsAuthChallenge(actx, stream)
+	if err != nil {
 		return trail.ToGRPC(err)
 	}
 
 	// Generate the cert.
-	respCert, err := userSingleUseCertsGenerate(stream.Context(), actx, *initReq)
+	respCert, err := userSingleUseCertsGenerate(stream.Context(), actx, *initReq, mfaDev)
 	if err != nil {
 		return trail.ToGRPC(err)
 	}
@@ -1638,40 +1640,41 @@ func validateUserSingleUseCertRequest(req *proto.UserCertsRequest, clock clockwo
 	return nil
 }
 
-func userSingleUseCertsAuthChallenge(gctx *grpcContext, stream proto.AuthService_GenerateUserSingleUseCertsServer) error {
+func userSingleUseCertsAuthChallenge(gctx *grpcContext, stream proto.AuthService_GenerateUserSingleUseCertsServer) (*types.MFADevice, error) {
 	ctx := stream.Context()
 	auth := gctx.authServer
 	user := gctx.User.GetName()
 	u2fStorage, err := u2f.InMemoryAuthenticationStorage(auth.Identity)
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, trace.Wrap(err)
 	}
 
 	authChallenge, err := auth.mfaAuthChallenge(ctx, user, u2fStorage)
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, trace.Wrap(err)
 	}
 	if err := stream.Send(&proto.UserSingleUseCertsResponse{
 		Response: &proto.UserSingleUseCertsResponse_MFAChallenge{MFAChallenge: authChallenge},
 	}); err != nil {
-		return trace.Wrap(err)
+		return nil, trace.Wrap(err)
 	}
 
 	req, err := stream.Recv()
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, trace.Wrap(err)
 	}
 	authResp := req.GetMFAResponse()
 	if authResp == nil {
-		return trace.BadParameter("expected MFAAuthenticateResponse, got %T", req.Request)
+		return nil, trace.BadParameter("expected MFAAuthenticateResponse, got %T", req.Request)
 	}
-	if err := auth.validateMFAAuthResponse(ctx, user, authResp, u2fStorage); err != nil {
-		return trace.Wrap(err)
+	mfaDev, err := auth.validateMFAAuthResponse(ctx, user, authResp, u2fStorage)
+	if err != nil {
+		return nil, trace.Wrap(err)
 	}
-	return nil
+	return mfaDev, nil
 }
 
-func userSingleUseCertsGenerate(ctx context.Context, actx *grpcContext, req proto.UserCertsRequest) (*proto.SingleUseUserCert, error) {
+func userSingleUseCertsGenerate(ctx context.Context, actx *grpcContext, req proto.UserCertsRequest, mfaDev *types.MFADevice) (*proto.SingleUseUserCert, error) {
 	// Get the client IP.
 	clientPeer, ok := peer.FromContext(ctx)
 	if !ok {
@@ -1683,7 +1686,7 @@ func userSingleUseCertsGenerate(ctx context.Context, actx *grpcContext, req prot
 	}
 
 	// Generate the cert.
-	certs, err := actx.generateUserCerts(ctx, req, certRequestMFAVerified, certRequestClientIP(clientIP))
+	certs, err := actx.generateUserCerts(ctx, req, certRequestMFAVerified(mfaDev.Id), certRequestClientIP(clientIP))
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

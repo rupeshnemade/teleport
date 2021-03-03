@@ -479,16 +479,18 @@ type certRequest struct {
 	// dbName is the optional database name which, if provided, will be used
 	// as a default database.
 	dbName string
-	// mfaVerified is set when this certRequest was created immediately after
-	// an MFA check.
-	mfaVerified bool
+	// mfaVerified is the UUID of an MFA device when this certRequest was
+	// created immediately after an MFA check.
+	mfaVerified string
 	// clientIP is an IP of the client requesting the certificate.
 	clientIP string
 }
 
 type certRequestOption func(*certRequest)
 
-func certRequestMFAVerified(r *certRequest) { r.mfaVerified = true }
+func certRequestMFAVerified(mfaID string) certRequestOption {
+	return func(r *certRequest) { r.mfaVerified = mfaID }
+}
 func certRequestClientIP(ip string) certRequestOption {
 	return func(r *certRequest) { r.clientIP = ip }
 }
@@ -917,7 +919,8 @@ func (a *Server) CheckU2FSignResponse(ctx context.Context, user string, response
 		return trace.Wrap(err)
 	}
 
-	return a.checkU2F(ctx, user, *response, a.Identity)
+	_, err = a.checkU2F(ctx, user, *response, a.Identity)
+	return trace.Wrap(err)
 }
 
 // ExtendWebSession creates a new web session for a user based on a valid previous session.
@@ -2027,7 +2030,7 @@ func (a *Server) mfaAuthChallenge(ctx context.Context, user string, u2fStorage u
 	return challenge, nil
 }
 
-func (a *Server) validateMFAAuthResponse(ctx context.Context, user string, resp *proto.MFAAuthenticateResponse, u2fStorage u2f.AuthenticationStorage) error {
+func (a *Server) validateMFAAuthResponse(ctx context.Context, user string, resp *proto.MFAAuthenticateResponse, u2fStorage u2f.AuthenticationStorage) (*types.MFADevice, error) {
 	switch res := resp.Response.(type) {
 	case *proto.MFAAuthenticateResponse_TOTP:
 		return a.checkOTP(user, res.TOTP.Code)
@@ -2038,14 +2041,14 @@ func (a *Server) validateMFAAuthResponse(ctx context.Context, user string, resp 
 			SignatureData: res.U2F.Signature,
 		}, u2fStorage)
 	default:
-		return trace.BadParameter("unknown or missing MFAAuthenticateResponse type %T", resp.Response)
+		return nil, trace.BadParameter("unknown or missing MFAAuthenticateResponse type %T", resp.Response)
 	}
 }
 
-func (a *Server) checkU2F(ctx context.Context, user string, res u2f.AuthenticateChallengeResponse, u2fStorage u2f.AuthenticationStorage) error {
+func (a *Server) checkU2F(ctx context.Context, user string, res u2f.AuthenticateChallengeResponse, u2fStorage u2f.AuthenticationStorage) (*types.MFADevice, error) {
 	devs, err := a.GetMFADevices(ctx, user)
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, trace.Wrap(err)
 	}
 	for _, dev := range devs {
 		u2fDev := dev.GetU2F()
@@ -2066,11 +2069,11 @@ func (a *Server) checkU2F(ctx context.Context, user string, res u2f.Authenticate
 			Clock:      a.clock,
 		}); err != nil {
 			// Since key handles are unique, no need to check other devices.
-			return trace.AccessDenied("U2F response validation failed for device %q: %v", dev.GetName(), err)
+			return nil, trace.AccessDenied("U2F response validation failed for device %q: %v", dev.GetName(), err)
 		}
-		return nil
+		return dev, nil
 	}
-	return trace.AccessDenied("U2F response validation failed: no device matches the response")
+	return nil, trace.AccessDenied("U2F response validation failed: no device matches the response")
 }
 
 // WithClock is a functional server option that sets the server's clock

@@ -1639,7 +1639,6 @@ func validateUserSingleUseCertRequest(ctx context.Context, actx *grpcContext, re
 		return trace.BadParameter("cannot request a single-use certificate for a different user")
 	}
 
-	notFoundErr := trace.NotFound("target resource not found")
 	var noMFAAccessErr error
 	switch req.Usage {
 	case proto.UserCertsRequest_SSH:
@@ -1664,7 +1663,7 @@ func validateUserSingleUseCertRequest(ctx context.Context, actx *grpcContext, re
 			}
 		}
 		if len(matches) == 0 {
-			return notFoundErr
+			return trace.NotFound("target resource not found")
 		}
 		if len(matches) > 1 {
 			return trace.BadParameter("multiple nodes match %q, please use the node UUID to login instead", req.NodeName)
@@ -1691,7 +1690,7 @@ func validateUserSingleUseCertRequest(ctx context.Context, actx *grpcContext, re
 			}
 		}
 		if cluster == nil {
-			return notFoundErr
+			return trace.NotFound("target resource not found")
 		}
 		noMFAAccessErr = actx.context.Checker.CheckAccessToKubernetes(defaults.Namespace, cluster, false)
 
@@ -1711,7 +1710,7 @@ func validateUserSingleUseCertRequest(ctx context.Context, actx *grpcContext, re
 			}
 		}
 		if db == nil {
-			return notFoundErr
+			return trace.NotFound("target resource not found")
 		}
 		noMFAAccessErr = actx.context.Checker.CheckAccessToDatabase(db, false)
 
@@ -1727,10 +1726,10 @@ func validateUserSingleUseCertRequest(ctx context.Context, actx *grpcContext, re
 	}
 	// Errors other than ErrSessionMFARequired mean something else is wrong,
 	// most likely access denied.
-	if noMFAAccessErr != services.ErrSessionMFARequired {
+	if !errors.Is(noMFAAccessErr, services.ErrSessionMFARequired) {
 		if trace.IsAccessDenied(noMFAAccessErr) {
 			// Mask access denied errors to prevent resource name oracles.
-			return notFoundErr
+			return trace.NotFound("target resource not found")
 		}
 		return trace.Wrap(noMFAAccessErr)
 	}

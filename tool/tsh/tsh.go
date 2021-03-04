@@ -1117,7 +1117,7 @@ func printNodesAsText(nodes []services.Server, verbose bool) {
 	fmt.Println(t.AsBuffer().String())
 }
 
-func showApps(servers []services.Server, verbose bool) {
+func showApps(servers []services.Server, active []tlsca.RouteToApp, verbose bool) {
 	// In verbose mode, print everything on a single line and include host UUID.
 	// In normal mode, chunk the labels, print two per line and allow multiple
 	// lines per node.
@@ -1125,8 +1125,14 @@ func showApps(servers []services.Server, verbose bool) {
 		t := asciitable.MakeTable([]string{"Application", "Description", "Host", "Public Address", "URI", "Labels"})
 		for _, server := range servers {
 			for _, app := range server.GetApps() {
+				name := app.Name
+				for _, a := range active {
+					if name == a.Name {
+						name = fmt.Sprintf("> %v", name)
+					}
+				}
 				t.AddRow([]string{
-					app.Name, app.Description, server.GetName(), app.PublicAddr, app.URI, services.LabelsAsString(app.StaticLabels, app.DynamicLabels),
+					name, app.Description, server.GetName(), app.PublicAddr, app.URI, services.LabelsAsString(app.StaticLabels, app.DynamicLabels),
 				})
 			}
 		}
@@ -1142,6 +1148,11 @@ func showApps(servers []services.Server, verbose bool) {
 					if i == 0 {
 						name = app.Name
 						addr = app.PublicAddr
+					}
+					for _, a := range active {
+						if name == a.Name {
+							name = fmt.Sprintf("> %v", name)
+						}
 					}
 					t.AddRow([]string{name, app.Description, addr, strings.Join(v, ", ")})
 				}
@@ -1947,12 +1958,18 @@ func onApps(cf *CLIConf) error {
 		return trace.Wrap(err)
 	}
 
+	// Retrieve profile to be able to show which apps user is logged into.
+	profile, err := client.StatusCurrent("", cf.Proxy)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
 	// Sort by server host name.
 	sort.Slice(servers, func(i, j int) bool {
 		return servers[i].GetName() < servers[j].GetName()
 	})
 
-	showApps(servers, cf.Verbose)
+	showApps(servers, profile.Apps, cf.Verbose)
 	return nil
 }
 
